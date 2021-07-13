@@ -4,7 +4,7 @@ import createImageCard from './templates/image-card.hbs';
 
 const refs = {
     searchForm: document.querySelector('#search-form'),
-    galery: document.querySelector('.gallery'),
+    gallery: document.querySelector('.gallery'),
 }
 
 const apiService = new ApiService();

@@ -12,48 +12,49 @@ import * as basicLightbox from 'basiclightbox';
 const refs = {
     searchForm: document.querySelector('#search-form'),
     gallery: document.querySelector('.gallery'),
-    loadMoreBtn: document.querySelector('[data-action="load-more"]'),
     body: document.querySelector('body'),
+    anchor: document.querySelector('.anchor'),
 }
 
 
 const apiService = new ApiService();
+const observer = new IntersectionObserver(observerCallback, {
+    threshold: 0,
+});
 
-hideLoadMoreBtn();
 
 refs.searchForm.addEventListener('submit', onSearch);
-refs.loadMoreBtn.addEventListener('click', onLoadMore);
-refs.gallery.addEventListener('click', onMakeBigImage)
+refs.gallery.addEventListener('click', onMakeBigImage);
+window.addEventListener('scroll', onAddObserver);
 
+function observerCallback() {
+    onLoadMore();
+}
+
+function onAddObserver() {
+observer.observe(refs.anchor);
+}
 
 async function onSearch(e) {
     e.preventDefault();
     
     apiService.query = e.currentTarget.elements.query.value.trim();
     
+    
     apiService.resetPage();
     clearGallery();
     await fetchImages();
     
-
-    const counter = refs.gallery.children.length;
-
-    if (counter === 0) {
-        hideLoadMoreBtn()
+    const fetchTotalHits = await apiService.fetchTotalHits();
+    if (fetchTotalHits === 0) {
         return alert(notificationOptions.incorrectQuery);
-        
-    }
-
-    if (counter >= 12) {
-        showLoadMoreBtn();
     }
 
     if (apiService.query === '') {
-        hideLoadMoreBtn();
-        alert(notificationOptions.notMachResults);
+        return alert(notificationOptions.notMachResults);
     }
-    if (apiService.query) {
-        notificationOptions.successResult.title =  `Found ${counter} ${apiService.query} images`,
+    if (fetchTotalHits > 0) {
+        notificationOptions.successResult.title =  `Found ${fetchTotalHits} ${apiService.query} images`,
         alert(notificationOptions.successResult);
     }
 }
@@ -70,14 +71,6 @@ async function fetchImages() {
 
 function createGallery(images) {
     refs.gallery.insertAdjacentHTML('beforeend', createImageCard(images));
-    scrollIntoEnd();
-}
-
-function scrollIntoEnd() {
-    refs.body.scrollIntoView({
-        behavior: 'smooth',
-        block: 'end',
-    });
 }
 
 function clearGallery() {
@@ -86,19 +79,11 @@ function clearGallery() {
 
 async function onLoadMore() {
     await fetchImages();
-    const counter = refs.gallery.children.length;
-    if (apiService.query) {
-        notificationOptions.successMoreResult.title =  `Found ${counter} ${apiService.query} images`,
-        alert(notificationOptions.successMoreResult);
+    const fetchTotalHits = await apiService.fetchTotalHits()
+    if (refs.gallery.children.length >= fetchTotalHits) {
+        observer.unobserve(refs.anchor);
+        alert(notificationOptions.imagesAreOver);
     }
-}
-
-function hideLoadMoreBtn() {
-    refs.loadMoreBtn.style.display = 'none';
-}
-
-function showLoadMoreBtn() {
-    refs.loadMoreBtn.style.display = 'block';
 }
 
 function onMakeBigImage(e) {
